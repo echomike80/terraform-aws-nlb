@@ -52,6 +52,12 @@ variable "enable_athena_access_logs_s3" {
   default     = false
 }
 
+variable "enable_any_egress_to_vpc" {
+  description = "Enable any egress traffic from Load Balancer instance to VPC"
+  type        = bool
+  default     = true
+}
+
 variable "internal" {
   type        = bool
   default     = false
@@ -70,6 +76,12 @@ variable "listener_maps_list" {
   default     = []
 }
 
+variable "load_balancer_type" {
+  description = "Type of Load Balancer"
+  type        = string
+  default     = "network"
+}
+
 variable "name" {
   description = "Name to be used on all resources as prefix"
   type        = string
@@ -78,6 +90,18 @@ variable "name" {
 variable "region" {
   description = "Name of region"
   type        = string
+}
+
+variable "sg_rules_egress_cidr_map" {
+  description = "Map of security group rules for egress communication of cidr"
+  type        = map
+  default     = {}
+}
+
+variable "sg_rules_ingress_cidr_map" {
+  description = "Map of security group rules for ingress communication of cidr"
+  type        = map
+  default     = {}
 }
 
 variable "subnet_ids" {
@@ -90,6 +114,54 @@ variable "tags" {
   description = "A mapping of tags to assign to the resource"
   type        = map(string)
   default     = {}
+}
+
+variable "target_group_health_check_interval" {
+  description = "Interval of target group health check"
+  type        = string
+  default     = "30"
+}
+
+variable "target_group_health_check_path" {
+  description = "Path of target group health check"
+  type        = string
+  default     = "/"
+}
+
+variable "target_group_health_check_port" {
+  description = "Port of target group health check"
+  type        = string
+  default     = "80"
+}
+
+variable "target_group_health_check_healthy_threshold" {
+  description = "Healthy threshold of target group health check"
+  type        = string
+  default     = "3"
+}
+
+variable "target_group_health_check_unhealthy_threshold" {
+  description = "Unhealthy threshold of target group health check"
+  type        = string
+  default     = "2"
+}
+
+variable "target_group_health_check_timeout" {
+  description = "Timeout of target group health check"
+  type        = string
+  default     = "5"
+}
+
+variable "target_group_health_check_protocol" {
+  description = "Protocol of target group health check"
+  type        = string
+  default     = "HTTP"
+}
+
+variable "target_group_health_check_matcher" {
+  description = "Matcher of target group health check"
+  type        = string
+  default     = "200"
 }
 
 variable "target_group_target_type" {
