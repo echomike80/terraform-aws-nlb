@@ -86,6 +86,16 @@ variable "subnet_ids" {
   default     = []
 }
 
+## ToDo improvement 
+## - https://github.com/hashicorp/terraform-provider-aws/pull/11404
+## - https://stackoverflow.com/questions/49284508/dynamic-subnet-mappings-for-aws-lb/57760953
+## - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb#subnet_mapping
+# variable "subnet_mapping_subnet_ids" {
+#   description = "A list of VPC Subnet IDs to launch in subnet_mapping"
+#   type        = list(string)
+#   default     = []
+# }
+
 variable "tags" {
   description = "A mapping of tags to assign to the resource"
   type        = map(string)

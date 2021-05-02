@@ -20,6 +20,21 @@ resource "aws_lb" "this" {
   ip_address_type                  = var.ip_address_type
   enable_deletion_protection       = var.deletion_protection_enabled
 
+## ToDo improvement 
+## - https://github.com/hashicorp/terraform-provider-aws/pull/11404
+## - https://stackoverflow.com/questions/49284508/dynamic-subnet-mappings-for-aws-lb/57760953
+## - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb#subnet_mapping
+#   dynamic "subnet_mapping" {
+#     for_each = [ for i in range(length(subnet_mapping_subnet_ids)): {
+#       subnet_id = subnet_mapping_subnet_ids[i]
+#       private_ipv4_address = private_ipv4_addresses[i]
+#     } ]
+#     content {
+#       subnet_id = subnet_mapping.value.subnet_id
+#       private_ipv4_address = subnet_mapping.value.private_ipv4_address
+#     }
+#   }
+
   access_logs {
     bucket  = aws_s3_bucket.lb_logs.bucket
     enabled = true
