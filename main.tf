@@ -223,19 +223,8 @@ resource "aws_s3_bucket_public_access_block" "athena_results_lb_logs" {
   depends_on = [aws_s3_bucket.athena_results_lb_logs]
 }
 
-resource "aws_athena_workgroup" "lb_logs" {
-  count = var.enable_athena_access_logs_s3 ? 1 : 0
-  name  = var.name
-
-  configuration {
-    result_configuration {
-      output_location = "s3://${aws_s3_bucket.athena_results_lb_logs[count.index].bucket}"
-    }
-  }
-}
-
 resource "aws_athena_database" "lb_logs" {
   count  = var.enable_athena_access_logs_s3 ? 1 : 0
   name   = var.athena_access_logs_s3_db_name
-  bucket = aws_s3_bucket.lb_logs.id
+  bucket = aws_s3_bucket.athena_results_lb_logs[count.index].id
 }
