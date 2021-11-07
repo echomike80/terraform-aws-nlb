@@ -36,8 +36,8 @@ resource "aws_lb" "this" {
 #   }
 
   access_logs {
-    bucket  = aws_s3_bucket.lb_logs.bucket
-    enabled = true
+    bucket  = var.enable_access_logs_s3 ? aws_s3_bucket.lb_logs[0].bucket : ""
+    enabled = var.enable_access_logs_s3 ? true : false
   }
 
   tags = merge(
@@ -48,8 +48,9 @@ resource "aws_lb" "this" {
   )
 }
 
+# Target group with only one target
 resource "aws_lb_target_group" "this" {
-  count                 = length(var.listener_maps_list)
+  count                 = var.target_group_target_several_targets == false ? length(var.listener_maps_list) : 0
   name                  = format("%s-%s", var.name, count.index)
   vpc_id                = var.vpc_id
   port                  = var.listener_maps_list[count.index].target_group_port
@@ -72,14 +73,14 @@ resource "aws_lb_target_group" "this" {
 }
 
 resource "aws_lb_target_group_attachment" "lb_to_instance" {
-  count             = length(var.listener_maps_list)
+  count             = var.target_group_target_several_targets == false ? length(var.listener_maps_list) : 0
   target_group_arn  = aws_lb_target_group.this[count.index].arn
   target_id         = var.listener_maps_list[count.index].target_ids
   port              = var.listener_maps_list[count.index].target_group_port
 }
 
 resource "aws_lb_listener" "this" {
-  count             = length(var.listener_maps_list)
+  count             = var.target_group_target_several_targets == false ? length(var.listener_maps_list) : 0
   load_balancer_arn = aws_lb.this.arn
   port              = var.listener_maps_list[count.index].listener_port
   protocol          = var.listener_maps_list[count.index].listener_protocol
@@ -90,11 +91,28 @@ resource "aws_lb_listener" "this" {
   }
 }
 
+# Target group with several targets
+module "target_group_several_targets" {
+  count     = var.target_group_target_several_targets ? length(var.listener_maps_list_several_targets) : 0
+
+  source    = "./modules/target_group_several_targets"
+
+  deregistration_delay          = var.deregistration_delay
+  listener_map_several_targets  = var.listener_maps_list_several_targets[count.index]
+  load_balancer_arn             = aws_lb.this.arn
+  name                          = format("%s-%s", var.name, count.index)
+  tags                          = var.tags
+  target_group_target_type      = var.target_group_target_type
+  vpc_id                        = var.vpc_id
+}
+
 ################
 # S3 Access Logs
 ################
 resource "aws_s3_bucket" "lb_logs" {
-  bucket = var.name
+  count  = var.enable_access_logs_s3 ? 1 : 0
+
+  bucket = var.access_logs_s3_bucket_name != null ? var.access_logs_s3_bucket_name : var.name
   acl    = "private"
 
   lifecycle_rule {
@@ -125,7 +143,9 @@ resource "aws_s3_bucket" "lb_logs" {
 }
 
 resource "aws_s3_bucket_public_access_block" "lb_logs" {
-  bucket = aws_s3_bucket.lb_logs.id
+  count  = var.enable_access_logs_s3 ? 1 : 0
+
+  bucket = aws_s3_bucket.lb_logs[0].id
 
   block_public_acls         = true
   block_public_policy       = true
@@ -139,7 +159,9 @@ resource "aws_s3_bucket_public_access_block" "lb_logs" {
 # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#access-logging-bucket-permissions
 
 resource "aws_s3_bucket_policy" "lb_logs" {
-  bucket = aws_s3_bucket.lb_logs.id
+  count  = var.enable_access_logs_s3 ? 1 : 0
+
+  bucket = aws_s3_bucket.lb_logs[0].id
 
   policy = <<POLICY
 {
@@ -151,7 +173,7 @@ resource "aws_s3_bucket_policy" "lb_logs" {
         "AWS": "arn:aws:iam::${data.aws_elb_service_account.main.id}:root"
       },
       "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::${aws_s3_bucket.lb_logs.bucket}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+      "Resource": "arn:aws:s3:::${aws_s3_bucket.lb_logs[0].bucket}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
     },
     {
       "Effect": "Allow",
@@ -159,7 +181,7 @@ resource "aws_s3_bucket_policy" "lb_logs" {
         "Service": "delivery.logs.amazonaws.com"
       },
       "Action": "s3:PutObject",
-      "Resource": "arn:aws:s3:::${aws_s3_bucket.lb_logs.bucket}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
+      "Resource": "arn:aws:s3:::${aws_s3_bucket.lb_logs[0].bucket}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
       "Condition": {
         "StringEquals": {
           "s3:x-amz-acl": "bucket-owner-full-control"
@@ -172,7 +194,7 @@ resource "aws_s3_bucket_policy" "lb_logs" {
         "Service": "delivery.logs.amazonaws.com"
       },
       "Action": "s3:GetBucketAcl",
-      "Resource": "arn:aws:s3:::${aws_s3_bucket.lb_logs.bucket}"
+      "Resource": "arn:aws:s3:::${aws_s3_bucket.lb_logs[0].bucket}"
     }
   ]
 }
@@ -186,6 +208,7 @@ POLICY
 ###########################
 resource "aws_s3_bucket" "athena_results_lb_logs" {
   count  = var.enable_athena_access_logs_s3 ? 1 : 0
+
   bucket = format("%s-athena-results", var.name)
   acl    = "private"
 

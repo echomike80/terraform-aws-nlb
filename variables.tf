@@ -1,3 +1,9 @@
+variable "access_logs_s3_bucket_name" {
+  description = "Name of the S3 bucket for access logs of Load Balancer"
+  type        = string
+  default     = null
+}
+
 variable "access_logs_s3_expiration_days" {
   description = "Amount of days for expiration of S3 access logs of Load Balancer"
   type        = number
@@ -29,21 +35,27 @@ variable "athena_access_logs_s3_expiration_days" {
 }
 
 variable "cross_zone_load_balancing_enabled" {
+  description = "A boolean flag to enable/disable cross zone load balancing"
   type        = bool
   default     = true
-  description = "A boolean flag to enable/disable cross zone load balancing"
 }
 
 variable "deletion_protection_enabled" {
+  description = "A boolean flag to enable/disable deletion protection for Load Balancer"
   type        = bool
   default     = false
-  description = "A boolean flag to enable/disable deletion protection for Load Balancer"
 }
 
 variable "deregistration_delay" {
+  description = "The amount of time to wait in seconds before changing the state of a deregistering target to unused"
   type        = number
   default     = 15
-  description = "The amount of time to wait in seconds before changing the state of a deregistering target to unused"
+}
+
+variable "enable_access_logs_s3" {
+  description = "A boolean flag to enable/disable load balancing access logs"
+  type        = bool
+  default     = true
 }
 
 variable "enable_athena_access_logs_s3" {
@@ -53,9 +65,9 @@ variable "enable_athena_access_logs_s3" {
 }
 
 variable "internal" {
+  description = "A boolean flag to determine whether the Load Balancer should be internal"
   type        = bool
   default     = false
-  description = "A boolean flag to determine whether the Load Balancer should be internal"
 }
 
 variable "ip_address_type" {
@@ -65,8 +77,14 @@ variable "ip_address_type" {
 }
 
 variable "listener_maps_list" {
-  description = "Customize details about the listener"
+  description = "Customize details about the listener, if target of target group(s) is only one instance"
   type        = list(map(string))
+  default     = []
+}
+
+variable "listener_maps_list_several_targets" {
+  description = "Customize details about the listener, if targets of target group(s) are more than one instance"
+  type        = list(any)
   default     = []
 }
 
@@ -100,6 +118,12 @@ variable "tags" {
   description = "A mapping of tags to assign to the resource"
   type        = map(string)
   default     = {}
+}
+
+variable "target_group_target_several_targets" {
+  description = "Enable if targets of target group(s) are more than one instance"
+  type        = bool
+  default     = false
 }
 
 variable "target_group_target_type" {
