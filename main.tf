@@ -8,6 +8,14 @@ data "aws_elb_service_account" "main" {
 }
 
 ##############
+# Elastic IP
+##############
+resource "aws_eip" "this" {
+  count     = (var.internal == false && var.allocate_eip) ? length(var.subnet_ids) : 0
+  vpc       = true
+}
+
+##############
 # Loadbalancer
 ##############
 resource "aws_lb" "this" {
@@ -15,25 +23,18 @@ resource "aws_lb" "this" {
   name                             = var.name
   internal                         = var.internal
 
-  subnets                          = var.subnet_ids
+  subnets                          = var.allocate_eip == false ? var.subnet_ids : null
   enable_cross_zone_load_balancing = var.cross_zone_load_balancing_enabled
   ip_address_type                  = var.ip_address_type
   enable_deletion_protection       = var.deletion_protection_enabled
 
-## ToDo improvement 
-## - https://github.com/hashicorp/terraform-provider-aws/pull/11404
-## - https://stackoverflow.com/questions/49284508/dynamic-subnet-mappings-for-aws-lb/57760953
-## - https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb#subnet_mapping
-#   dynamic "subnet_mapping" {
-#     for_each = [ for i in range(length(subnet_mapping_subnet_ids)): {
-#       subnet_id = subnet_mapping_subnet_ids[i]
-#       private_ipv4_address = private_ipv4_addresses[i]
-#     } ]
-#     content {
-#       subnet_id = subnet_mapping.value.subnet_id
-#       private_ipv4_address = subnet_mapping.value.private_ipv4_address
-#     }
-#   }
+  dynamic "subnet_mapping" {
+    for_each    = (var.internal == false && var.allocate_eip) ? var.subnet_ids : []
+    content {
+      subnet_id     = subnet_mapping.value
+      allocation_id = aws_eip.this[subnet_mapping.key].allocation_id
+    }
+  }
 
   access_logs {
     bucket  = var.enable_access_logs_s3 ? aws_s3_bucket.lb_logs[0].bucket : ""
@@ -94,7 +95,6 @@ resource "aws_lb_listener" "this" {
 # Target group with several targets
 module "target_group_several_targets" {
   count     = var.target_group_target_several_targets ? length(var.listener_maps_list_several_targets) : 0
-
   source    = "./modules/target_group_several_targets"
 
   deregistration_delay          = var.deregistration_delay
@@ -111,28 +111,7 @@ module "target_group_several_targets" {
 ################
 resource "aws_s3_bucket" "lb_logs" {
   count  = var.enable_access_logs_s3 ? 1 : 0
-
   bucket = var.access_logs_s3_bucket_name != null ? var.access_logs_s3_bucket_name : var.name
-  acl    = "private"
-
-  lifecycle_rule {
-    id      = "log"
-    enabled = true
-
-    tags = {
-      "rule"      = "log"
-      "autoclean" = "true"
-    }
-
-    transition {
-      days          = var.access_logs_s3_transition_days
-      storage_class = var.access_logs_s3_transition_storage_class
-    }
-
-    expiration {
-      days = var.access_logs_s3_expiration_days
-    }
-  }
 
   tags = merge(
     {
@@ -144,7 +123,6 @@ resource "aws_s3_bucket" "lb_logs" {
 
 resource "aws_s3_bucket_public_access_block" "lb_logs" {
   count  = var.enable_access_logs_s3 ? 1 : 0
-
   bucket = aws_s3_bucket.lb_logs[0].id
 
   block_public_acls         = true
@@ -155,12 +133,49 @@ resource "aws_s3_bucket_public_access_block" "lb_logs" {
   depends_on = [aws_s3_bucket.lb_logs]
 }
 
+resource "aws_s3_bucket_acl" "lb_logs" {
+  count  = var.enable_access_logs_s3 ? 1 : 0
+  bucket = aws_s3_bucket.lb_logs[0].id
+  
+  acl   = "private"
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "lb_logs" {
+  count  = var.enable_access_logs_s3 ? 1 : 0
+  bucket = aws_s3_bucket.lb_logs[0].id
+
+  rule {
+    id      = "log"
+
+    transition {
+      days          = var.access_logs_s3_transition_days
+      storage_class = var.access_logs_s3_transition_storage_class
+    }
+
+    expiration {
+      days = var.access_logs_s3_expiration_days
+    }
+
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "lb_logs" {
+  count  = var.enable_access_logs_s3 ? 1 : 0
+  bucket = aws_s3_bucket.lb_logs[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+    }
+  }
+}
+
 # sources:
 # https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html#access-logging-bucket-permissions
 
 resource "aws_s3_bucket_policy" "lb_logs" {
   count  = var.enable_access_logs_s3 ? 1 : 0
-
   bucket = aws_s3_bucket.lb_logs[0].id
 
   policy = <<POLICY
@@ -208,23 +223,7 @@ POLICY
 ###########################
 resource "aws_s3_bucket" "athena_results_lb_logs" {
   count  = var.enable_athena_access_logs_s3 ? 1 : 0
-
   bucket = format("%s-athena-results", var.name)
-  acl    = "private"
-
-  lifecycle_rule {
-    id      = "results"
-    enabled = true
-
-    tags = {
-      "rule"      = "results"
-      "autoclean" = "true"
-    }
-
-    expiration {
-      days = var.athena_access_logs_s3_expiration_days
-    }
-  }
 
   tags = merge(
     {
@@ -234,9 +233,16 @@ resource "aws_s3_bucket" "athena_results_lb_logs" {
   )
 }
 
+resource "aws_s3_bucket_acl" "athena_results_lb_logs" {
+  count  = var.enable_athena_access_logs_s3 ? 1 : 0
+  bucket = aws_s3_bucket.lb_logs[0].id
+  
+  acl   = "private"
+}
+
 resource "aws_s3_bucket_public_access_block" "athena_results_lb_logs" {
   count  = var.enable_athena_access_logs_s3 ? 1 : 0
-  bucket = aws_s3_bucket.athena_results_lb_logs[count.index].id
+  bucket = aws_s3_bucket.athena_results_lb_logs[0].id
 
   block_public_acls         = true
   block_public_policy       = true
@@ -246,8 +252,34 @@ resource "aws_s3_bucket_public_access_block" "athena_results_lb_logs" {
   depends_on = [aws_s3_bucket.athena_results_lb_logs]
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "athena_results_lb_logs" {
+  count  = var.enable_athena_access_logs_s3 ? 1 : 0
+  bucket = aws_s3_bucket.athena_results_lb_logs[0].id
+
+  rule {
+    id      = "results"
+
+    expiration {
+      days = var.athena_access_logs_s3_expiration_days
+    }
+
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "athena_results_lb_logs" {
+  count  = var.enable_athena_access_logs_s3 ? 1 : 0
+  bucket = aws_s3_bucket.athena_results_lb_logs[0].id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+    }
+  }
+}
+
 resource "aws_athena_database" "lb_logs" {
   count  = var.enable_athena_access_logs_s3 ? 1 : 0
   name   = var.athena_access_logs_s3_db_name
-  bucket = aws_s3_bucket.athena_results_lb_logs[count.index].id
+  bucket = aws_s3_bucket.athena_results_lb_logs[0].id
 }

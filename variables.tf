@@ -22,6 +22,12 @@ variable "access_logs_s3_transition_storage_class" {
   default     = "STANDARD_IA" # or "ONEZONE_IA"
 }
 
+variable "allocate_eip" {
+  description = "A boolean flag to enable/disable allocation of Elastic ip for external Load Balancer"
+  type        = bool
+  default     = false
+}
+
 variable "athena_access_logs_s3_db_name" {
   description = "AWS Athena Database name for ALB access logging"
   type        = string

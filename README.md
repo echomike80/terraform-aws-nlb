@@ -133,15 +133,22 @@ module "nlb_webproxy" {
 | Name | Type |
 |------|------|
 | [aws_athena_database.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_database) | resource |
+| [aws_eip.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eip) | resource |
 | [aws_lb.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb) | resource |
 | [aws_lb_listener.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_listener) | resource |
 | [aws_lb_target_group.this](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group) | resource |
-| [aws_lb_target_group_attachment.lb_to_instance](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) | resource |   
+| [aws_lb_target_group_attachment.lb_to_instance](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb_target_group_attachment) | resource |
 | [aws_s3_bucket.athena_results_lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
 | [aws_s3_bucket.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket) | resource |
+| [aws_s3_bucket_acl.athena_results_lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl) | resource |
+| [aws_s3_bucket_acl.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_acl) | resource |
+| [aws_s3_bucket_lifecycle_configuration.athena_results_lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_lifecycle_configuration) | resource |
+| [aws_s3_bucket_lifecycle_configuration.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_lifecycle_configuration) | resource |
 | [aws_s3_bucket_policy.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_policy) | resource |
 | [aws_s3_bucket_public_access_block.athena_results_lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |
-| [aws_s3_bucket_public_access_block.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |    
+| [aws_s3_bucket_public_access_block.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_public_access_block) | resource |
+| [aws_s3_bucket_server_side_encryption_configuration.athena_results_lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration) | resource |
+| [aws_s3_bucket_server_side_encryption_configuration.lb_logs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/s3_bucket_server_side_encryption_configuration) | resource |
 | [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/caller_identity) | data source |
 | [aws_elb_service_account.main](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/elb_service_account) | data source |
 
@@ -152,17 +159,16 @@ module "nlb_webproxy" {
 | <a name="input_access_logs_s3_bucket_name"></a> [access\_logs\_s3\_bucket\_name](#input\_access\_logs\_s3\_bucket\_name) | Name of the S3 bucket for access logs of Load Balancer | `string` | `null` | no |
 | <a name="input_access_logs_s3_expiration_days"></a> [access\_logs\_s3\_expiration\_days](#input\_access\_logs\_s3\_expiration\_days) | Amount of days for expiration of S3 access logs of Load Balancer | `number` | `90` | no |
 | <a name="input_access_logs_s3_transition_days"></a> [access\_logs\_s3\_transition\_days](#input\_access\_logs\_s3\_transition\_days) | Amount of days for S3 storage class to transition of access logs of Load Balancer | `number` | `30` | no |
-| <a name="input_access_logs_s3_transition_storage_class"></a> [access\_logs\_s3\_transition\_storage\_class](#input\_access\_logs\_s3\_transition\_storage\_class) | S3 
-storage class to transition access logs of Load Balancer after amount of days | `string` | `"STANDARD_IA"` | no |
-| <a name="input_athena_access_logs_s3_db_name"></a> [athena\_access\_logs\_s3\_db\_name](#input\_athena\_access\_logs\_s3\_db\_name) | AWS Athena Database name for ALB 
-access logging | `string` | `"alb_logs"` | no |
+| <a name="input_access_logs_s3_transition_storage_class"></a> [access\_logs\_s3\_transition\_storage\_class](#input\_access\_logs\_s3\_transition\_storage\_class) | S3 storage class to transition access logs of Load Balancer after amount of days | `string` | `"STANDARD_IA"` | no |
+| <a name="input_allocate_eip"></a> [allocate\_eip](#input\_allocate\_eip) | A boolean flag to enable/disable allocation of Elastic ip for external Load Balancer | `bool` | `false` | no |
+| <a name="input_athena_access_logs_s3_db_name"></a> [athena\_access\_logs\_s3\_db\_name](#input\_athena\_access\_logs\_s3\_db\_name) | AWS Athena Database name for ALB access logging | `string` | `"alb_logs"` | no |
 | <a name="input_athena_access_logs_s3_expiration_days"></a> [athena\_access\_logs\_s3\_expiration\_days](#input\_athena\_access\_logs\_s3\_expiration\_days) | Amount of days for expiration of S3 results of AWS Athena | `number` | `30` | no |
 | <a name="input_cross_zone_load_balancing_enabled"></a> [cross\_zone\_load\_balancing\_enabled](#input\_cross\_zone\_load\_balancing\_enabled) | A boolean flag to enable/disable cross zone load balancing | `bool` | `true` | no |
 | <a name="input_deletion_protection_enabled"></a> [deletion\_protection\_enabled](#input\_deletion\_protection\_enabled) | A boolean flag to enable/disable deletion protection for Load Balancer | `bool` | `false` | no |
 | <a name="input_deregistration_delay"></a> [deregistration\_delay](#input\_deregistration\_delay) | The amount of time to wait in seconds before changing the state of a deregistering target to unused | `number` | `15` | no |
 | <a name="input_enable_access_logs_s3"></a> [enable\_access\_logs\_s3](#input\_enable\_access\_logs\_s3) | A boolean flag to enable/disable load balancing access logs | `bool` | `true` | no |
 | <a name="input_enable_athena_access_logs_s3"></a> [enable\_athena\_access\_logs\_s3](#input\_enable\_athena\_access\_logs\_s3) | Enable AWS Athena for ALB access logging analysis | `bool` | `false` | no |
-| <a name="input_internal"></a> [internal](#input\_internal) | A boolean flag to determine whether the Load Balancer should be internal | `bool` | `false` | no |        
+| <a name="input_internal"></a> [internal](#input\_internal) | A boolean flag to determine whether the Load Balancer should be internal | `bool` | `false` | no |
 | <a name="input_ip_address_type"></a> [ip\_address\_type](#input\_ip\_address\_type) | IP address type of Load Balancer | `string` | `"ipv4"` | no |
 | <a name="input_listener_maps_list"></a> [listener\_maps\_list](#input\_listener\_maps\_list) | Customize details about the listener, if target of target group(s) is only one instance | `list(map(string))` | `[]` | no |
 | <a name="input_listener_maps_list_several_targets"></a> [listener\_maps\_list\_several\_targets](#input\_listener\_maps\_list\_several\_targets) | Customize details about the listener, if targets of target group(s) are more than one instance | `list(any)` | `[]` | no |
